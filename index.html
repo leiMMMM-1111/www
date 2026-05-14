@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小学生心理测评系统 - 多端共享版</title>
+    <style>
+        /* 样式与之前基本一致，略作调整以适配新字段，此处省略重复样式，实际使用时请将之前回答中的完整CSS粘贴在此 */
+        :root {
+            --primary: #4A90D9;
+            --bg: #f0f4f8;
+            --card-bg: #ffffff;
+            --text: #333333;
+            --border: #e0e6ed;
+            --shadow: 0 2px 12px rgba(0,0,0,0.08);
+            --student-primary: #5B8FF9;
+            --teacher-primary: #F6BD16;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: var(--card-bg);
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+        .container.wide { max-width: 1100px; }
+        .header {
+            background: linear-gradient(135deg, #5B8FF9, #4A90D9);
+            color: #fff;
+            padding: 22px 30px;
+            text-align: center;
+        }
+        .header.teacher-header { background: linear-gradient(135deg, #f6bd16, #e8a810); }
+        .header h1 { font-size: 1.6em; font-weight: 700; }
+        .header .subtitle { font-size: 0.85em; opacity: 0.9; margin-top: 4px; }
+        .body-content { padding: 28px 30px; max-height: 65vh; overflow-y: auto; }
+        .entry-select { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; padding: 20px 0; }
+        .entry-card {
+            flex: 1; min-width: 180px; max-width: 260px;
+            border: 2px solid var(--border); border-radius: 16px;
+            padding: 30px 20px; text-align: center; cursor: pointer;
+            transition: all 0.3s; background: #fafbfc;
+        }
+        .entry-card:hover { border-color: #5B8FF9; transform: translateY(-3px); box-shadow: 0 6px 20px rgba(91,143,249,0.15); }
+        .entry-card.teacher-card:hover { border-color: #F6BD16; }
+        .entry-card .icon { font-size: 3em; margin-bottom: 12px; }
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+        .form-group input, .form-group select {
+            width: 100%; padding: 12px 16px; border: 2px solid var(--border);
+            border-radius: 10px; font-size: 1em; background: #fafbfc; outline: none;
+        }
+        .btn {
+            padding: 12px 28px; border: none; border-radius: 10px;
+            font-size: 1em; font-weight: 600; cursor: pointer; transition: all 0.3s;
+        }
+        .btn-primary { background: #5B8FF9; color: #fff; width: 100%; }
+        .btn-primary:hover { background: #4A7DE0; }
+        .btn-teacher { background: #F6BD16; color: #fff; width: 100%; }
+        .btn-teacher:hover { background: #e8a810; }
+        .btn-outline { background: #fff; color: #5B8FF9; border: 2px solid #5B8FF9; }
+        .btn-sm { padding: 7px 16px; font-size: 0.85em; }
+        .btn-back { background: #f0f0f0; color: #555; border: 1px solid #ddd; }
+        .btn-danger { background: #ff4d4f; color: #fff; }
+        .progress-wrap { margin-bottom: 20px; background: #eef2f7; border-radius: 20px; height: 10px; }
+        .progress-bar { height: 100%; background: #5B8FF9; border-radius: 20px; transition: width 0.4s; }
+        .question-block {
+            background: #fafcfd; border: 1px solid #eef2f7;
+            border-radius: 10px; padding: 16px 18px; margin-bottom: 12px;
+        }
+        .options { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+        .options label {
+            padding: 7px 14px; border: 2px solid #e8ecf1; border-radius: 20px;
+            cursor: pointer; background: #fff; display: flex; align-items: center; gap: 5px;
+        }
+        .options label:has(input:checked) { border-color: #5B8FF9; background: #eef5ff; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+        table th, table td { padding: 10px 12px; border-bottom: 1px solid #eef2f7; text-align: center; }
+        table th { background: #f8fafc; font-weight: 700; }
+        .analysis-panel {
+            background: #fdfdff; border: 2px solid #e8ecf1;
+            border-radius: 14px; padding: 20px; margin-top: 16px; display: none;
+        }
+        .analysis-panel.active { display: block; }
+        .dimension-row {
+            display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+            background: #fafcfd; border-radius: 8px; margin: 6px 0;
+        }
+        .toast {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 9999; padding: 12px 24px; border-radius: 25px;
+            font-weight: 600; background: #52c41a; color: #fff;
+        }
+        .badge-status { padding: 4px 10px; border-radius: 12px; font-size: 0.78em; font-weight: 600; }
+        .badge-good { background: #e6f7e6; color: #389e0d; }
+        .badge-normal { background: #fffbe6; color: #d48806; }
+        .badge-attention { background: #fff1f0; color: #cf1322; }
+    </style>
+</head>
+<body>
+    <div class="container" id="mainContainer"></div>
+    <div id="toastContainer"></div>
+
+    <script>
+        // ==================== 配置 ====================
+        const API_BASE_URL = 'http://localhost:3000';  // ⚠️ 修改为你的后端地址
+        const TEACHER_ACCOUNT = 'tszxx';
+        const TEACHER_PASSWORD = 'tszxx123';
+
+        // 年级与班级对应关系（与后端同步）
+        const gradeClassMap = {
+            '三年级': ['233', '234', '235'],
+            '四年级': ['230', '231', '232'],
+            '五年级': ['226', '228', '229'],
+            '六年级': ['222', '223', '224', '225']
+        };
+
+        // 50道题目（保持不变，此处省略重复定义，请从之前的完整代码中复制 questions 数组）
+        const questions = [
+            { id:1, text:'我觉得心情很好，每天都很开心', dimension:'情绪状态', reverse:true },
+            { id:2, text:'我容易感到害怕或紧张', dimension:'情绪状态', reverse:false },
+            { id:3, text:'我会因为小事而担心很久', dimension:'情绪状态', reverse:false },
+            { id:4, text:'我容易发脾气或生气', dimension:'情绪状态', reverse:false },
+            { id:5, text:'我感到孤单，没人陪我玩', dimension:'情绪状态', reverse:false },
+            { id:6, text:'我经常想哭或心情低落', dimension:'情绪状态', reverse:false },
+            { id:7, text:'我对很多事情提不起兴趣', dimension:'情绪状态', reverse:false },
+            { id:8, text:'我觉得很累，没有精神', dimension:'情绪状态', reverse:false },
+            { id:9, text:'我晚上能睡得很好', dimension:'情绪状态', reverse:true },
+            { id:10, text:'我吃饭胃口很好', dimension:'情绪状态', reverse:true },
+            { id:11, text:'我经常担心不好的事情会发生', dimension:'情绪状态', reverse:false },
+            { id:12, text:'我能很快让自己的心情平静下来', dimension:'情绪状态', reverse:true },
+            { id:13, text:'我喜欢和同学一起玩游戏', dimension:'社交能力', reverse:true },
+            { id:14, text:'我在学校有好朋友', dimension:'社交能力', reverse:true },
+            { id:15, text:'我和同学们相处得很愉快', dimension:'社交能力', reverse:true },
+            { id:16, text:'我害怕主动和别人说话', dimension:'社交能力', reverse:false },
+            { id:17, text:'有同学会欺负我或取笑我', dimension:'社交能力', reverse:false },
+            { id:18, text:'我愿意帮助有困难的同学', dimension:'社交能力', reverse:true },
+            { id:19, text:'我喜欢参加班级的集体活动', dimension:'社交能力', reverse:true },
+            { id:20, text:'我觉得同学们都喜欢我', dimension:'社交能力', reverse:true },
+            { id:21, text:'我能主动向別人打招呼问好', dimension:'社交能力', reverse:true },
+            { id:22, text:'和同学发生矛盾时，我会主动和好', dimension:'社交能力', reverse:true },
+            { id:23, text:'我在学校感到被排斥或孤立', dimension:'社交能力', reverse:false },
+            { id:24, text:'我愿意把自己的东西分享给同学', dimension:'社交能力', reverse:true },
+            { id:25, text:'我喜欢来学校上学', dimension:'学习适应', reverse:true },
+            { id:26, text:'我觉得学习新知识很有趣', dimension:'学习适应', reverse:true },
+            { id:27, text:'上课时我能专心听老师讲课', dimension:'学习适应', reverse:true },
+            { id:28, text:'我能按时完成每天的作业', dimension:'学习适应', reverse:true },
+            { id:29, text:'我觉得学习压力很大', dimension:'学习适应', reverse:false },
+            { id:30, text:'考试前我会非常紧张', dimension:'学习适应', reverse:false },
+            { id:31, text:'我对自己目前的学习成绩感到满意', dimension:'学习适应', reverse:true },
+            { id:32, text:'遇到不会的题目，我会主动请教老师', dimension:'学习适应', reverse:true },
+            { id:33, text:'我喜欢阅读课外书', dimension:'学习适应', reverse:true },
+            { id:34, text:'我觉得老师喜欢我、关心我', dimension:'学习适应', reverse:true },
+            { id:35, text:'课堂上我能认真听讲不走神', dimension:'学习适应', reverse:true },
+            { id:36, text:'学习让我感到快乐和充实', dimension:'学习适应', reverse:true },
+            { id:37, text:'我觉得自己是一个很棒的孩子', dimension:'自信心', reverse:true },
+            { id:38, text:'我相信自己能把事情做好', dimension:'自信心', reverse:true },
+            { id:39, text:'我敢于在课堂上举手发言', dimension:'自信心', reverse:true },
+            { id:40, text:'我对自己外貌感到满意', dimension:'自信心', reverse:true },
+            { id:41, text:'我经常觉得自己不如别的同学', dimension:'自信心', reverse:false },
+            { id:42, text:'遇到困难时我不会轻易放弃', dimension:'自信心', reverse:true },
+            { id:43, text:'我敢于尝试没做过的新事情', dimension:'自信心', reverse:true },
+            { id:44, text:'我觉得自己身上有很多优点', dimension:'自信心', reverse:true },
+            { id:45, text:'我每天都能按时起床不赖床', dimension:'行为习惯', reverse:true },
+            { id:46, text:'我能自己整理好书包和房间', dimension:'行为习惯', reverse:true },
+            { id:47, text:'我经常参加体育锻炼或户外活动', dimension:'行为习惯', reverse:true },
+            { id:48, text:'我能遵守学校的纪律和规定', dimension:'行为习惯', reverse:true },
+            { id:49, text:'我能控制自己不动手打人', dimension:'行为习惯', reverse:true },
+            { id:50, text:'我每天都有充足的睡眠时间', dimension:'行为习惯', reverse:true }
+        ];
+
+        let currentView = 'entry';
+        let studentInfo = { name: '', grade: '', className: '', gender: '' };
+        let answers = {};
+        let currentPage = 1;
+        const totalPages = 5;
+        const questionsPerPage = 10;
+        let teacherSelectedRecord = null;
+
+        // 工具函数
+        function showToast(msg, type='info') {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = msg;
+            toast.style.background = type==='error' ? '#ff4d4f' : '#52c41a';
+            document.getElementById('toastContainer').appendChild(toast);
+            setTimeout(() => { toast.style.opacity='0'; setTimeout(()=>toast.remove(),300); }, 2000);
+        }
+
+        function getAdjustedScore(raw, reverse) {
+            return reverse ? 5 - raw : raw;
+        }
+
+        function analyzeRecord(answers) {
+            const dims = {};
+            questions.forEach((q, idx) => {
+                const raw = answers[idx];
+                if (raw === undefined || raw === null) return;
+                const adj = getAdjustedScore(raw, q.reverse);
+                if (!dims[q.dimension]) dims[q.dimension] = { total:0, count:0 };
+                dims[q.dimension].total += adj;
+                dims[q.dimension].count += 1;
+            });
+            const results = {};
+            let overallTotal = 0, overallCount = 0;
+            for (let [dim, data] of Object.entries(dims)) {
+                const avg = data.total / data.count;
+                let level, colorClass;
+                if (avg <= 1.5) { level = '良好'; colorClass = 'badge-good'; }
+                else if (avg <= 2.5) { level = '一般'; colorClass = 'badge-normal'; }
+                else if (avg <= 3.2) { level = '需要关注'; colorClass = 'badge-attention'; }
+                else { level = '亟需帮助'; colorClass = 'badge-attention'; }
+                results[dim] = { avg: avg.toFixed(2), level, colorClass };
+                overallTotal += data.total;
+                overallCount += data.count;
+            }
+            const overallAvg = overallCount > 0 ? (overallTotal / overallCount).toFixed(2) : '0';
+            let overallLevel;
+            if (overallAvg <= 1.5) overallLevel = '整体心理状态良好';
+            else if (overallAvg <= 2.5) overallLevel = '整体心理状态一般，部分方面可适当关注';
+            else if (overallAvg <= 3.2) overallLevel = '整体心理状态需关注，建议进一步了解';
+            else overallLevel = '整体心理状态亟需关注，建议寻求专业辅导';
+            return { results, overallAvg, overallLevel };
+        }
+
+        // 渲染函数
+        function renderEntry() {
+            currentView = 'entry';
+            document.getElementById('mainContainer').innerHTML = `
+                <div class="header"><h1>🌈 小学生心理测评系统</h1><div class="subtitle">关爱心灵 · 健康成长</div></div>
+                <div class="body-content">
+                    <div class="entry-select">
+                        <div class="entry-card" id="entryStudent"><div class="icon">👦👧</div><div>学生入口</div><div style="font-size:0.8em;color:#666;">参与心理测评</div></div>
+                        <div class="entry-card teacher-card" id="entryTeacher"><div class="icon">👩‍🏫👨‍🏫</div><div>教师入口</div><div style="font-size:0.8em;color:#666;">查看数据与分析</div></div>
+                    </div>
+                </div>`;
+            document.getElementById('entryStudent').onclick = renderStudentLogin;
+            document.getElementById('entryTeacher').onclick = renderTeacherLogin;
+        }
+
+        function renderStudentLogin() {
+            currentView = 'studentLogin';
+            document.getElementById('mainContainer').innerHTML = `
+                <div class="header"><h1>📝 学生信息</h1><div class="subtitle">请填写真实信息开始测评</div></div>
+                <div class="body-content">
+                    <div class="form-group"><label>姓名</label><input type="text" id="inputName" placeholder="请输入你的姓名"></div>
+                    <div class="form-group"><label>年级</label>
+                        <select id="inputGrade"><option value="">请选择年级</option>
+                            ${Object.keys(gradeClassMap).map(g => `<option value="${g}">${g}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="form-group"><label>班级</label>
+                        <select id="inputClass"><option value="">请先选择年级</option></select>
+                    </div>
+                    <div class="form-group"><label>性别</label>
+                        <select id="inputGender"><option value="">请选择性别</option><option value="男">男</option><option value="女">女</option></select>
+                    </div>
+                    <button class="btn btn-primary" id="btnStart">开始答题</button>
+                    <div style="text-align:center;margin-top:10px;"><button class="btn btn-back btn-sm" id="btnBack1">← 返回首页</button></div>
+                </div>`;
+            const gradeSelect = document.getElementById('inputGrade');
+            const classSelect = document.getElementById('inputClass');
+            gradeSelect.onchange = () => {
+                const grade = gradeSelect.value;
+                classSelect.innerHTML = '<option value="">请选择班级</option>';
+                if (grade && gradeClassMap[grade]) {
+                    gradeClassMap[grade].forEach(cls => {
+                        classSelect.innerHTML += `<option value="${cls}">${cls}班</option>`;
+                    });
+                }
+            };
+            document.getElementById('btnStart').onclick = () => {
+                const name = document.getElementById('inputName').value.trim();
+                const grade = gradeSelect.value;
+                const className = classSelect.value;
+                const gender = document.getElementById('inputGender').value;
+                if (!name || !grade || !className || !gender) {
+                    showToast('请填写完整信息', 'error'); return;
+                }
+                studentInfo = { name, grade, className, gender };
+                answers = {}; currentPage = 1;
+                renderQuizPage();
+            };
+            document.getElementById('btnBack1').onclick = renderEntry;
+        }
+
+        function renderQuizPage() {
+            currentView = 'studentQuiz';
+            const start = (currentPage-1)*questionsPerPage;
+            const pageQs = questions.slice(start, start+questionsPerPage);
+            let qhtml = '';
+            pageQs.forEach((q, i) => {
+                const idx = start + i;
+                const sel = answers[idx];
+                qhtml += `<div class="question-block">
+                    <span style="background:#5B8FF9;color:#fff;padding:2px 8px;border-radius:50%;">${q.id}</span> ${q.text}
+                    <div class="options">
+                        <label><input type="radio" name="q${idx}" value="1" ${sel===1?'checked':''}><span>从不</span></label>
+                        <label><input type="radio" name="q${idx}" value="2" ${sel===2?'checked':''}><span>偶尔</span></label>
+                        <label><input type="radio" name="q${idx}" value="3" ${sel===3?'checked':''}><span>经常</span></label>
+                        <label><input type="radio" name="q${idx}" value="4" ${sel===4?'checked':''}><span>总是</span></label>
+                    </div></div>`;
+            });
+            const progress = Math.round((currentPage/totalPages)*100);
+            document.getElementById('mainContainer').innerHTML = `
+                <div class="header"><h1>📋 心理测评问卷</h1><div class="subtitle">第 ${currentPage}/${totalPages} 页（共50题）</div></div>
+                <div class="body-content">
+                    <div class="progress-wrap"><div class="progress-bar" style="width:${progress}%;"></div></div>
+                    ${qhtml}
+                    <div style="display:flex;gap:10px;justify-content:center;margin-top:20px;">
+                        ${currentPage>1?`<button class="btn btn-outline btn-sm" id="btnPrev">← 上一页</button>`:''}
+                        ${currentPage<totalPages?`<button class="btn btn-primary btn-sm" id="btnNext">下一页 →</button>`:''}
+                        ${currentPage===totalPages?`<button class="btn btn-primary btn-sm" id="btnSubmit">✅ 提交答卷</button>`:''}
+                    </div>
+                    <div style="text-align:center;margin-top:10px;"><button class="btn btn-back btn-sm" id="btnCancel">退出答题</button></div>
+                </div>`;
+            function savePage() {
+                document.querySelectorAll('input[type="radio"]:checked').forEach(r => {
+                    const idx = parseInt(r.name.replace('q',''));
+                    answers[idx] = parseInt(r.value);
+                });
+            }
+            if (currentPage>1) document.getElementById('btnPrev').onclick = () => { savePage(); currentPage--; renderQuizPage(); };
+            if (currentPage<totalPages) document.getElementById('btnNext').onclick = () => {
+                savePage();
+                for (let i=start; i<start+questionsPerPage; i++) if (answers[i]===undefined) {
+                    showToast('请完成当前页所有题目', 'error'); return;
+                }
+                currentPage++; renderQuizPage();
+            };
+            if (currentPage===totalPages) document.getElementById('btnSubmit').onclick = async () => {
+                savePage();
+                for (let i=0; i<questions.length; i++) if (answers[i]===undefined) {
+                    showToast(`第${i+1}题未作答`, 'error'); return;
+                }
+                try {
+                    const res = await fetch(`${API_BASE_URL}/api/submit`, {
+                        method: 'POST',
+                        headers: {'Content-Type':'application/json'},
+                        body: JSON.stringify({
+                            studentName: studentInfo.name,
+                            grade: studentInfo.grade,
+                            className: studentInfo.className,
+                            gender: studentInfo.gender,
+                            answers: answers
+                        })
+                    });
+                    if (res.ok) {
+                        renderStudentDone();
+                    } else {
+                        showToast('提交失败，请重试', 'error');
+                    }
+                } catch(e) {
+                    showToast('网络错误，无法连接服务器', 'error');
+                }
+            };
+            document.getElementById('btnCancel').onclick = () => {
+                if (Object.keys(answers).length>0 && !confirm('退出后未提交的答题将丢失，确定吗？')) return;
+                answers = {}; renderEntry();
+            };
+        }
+
+        function renderStudentDone() {
+            document.getElementById('mainContainer').innerHTML = `
+                <div class="header"><h1>🎉 提交成功</h1><div class="subtitle">感谢你的参与！</div></div>
+                <div class="body-content" style="text-align:center;">
+                    <div style="font-size:4em;">✅</div>
+                    <p>你的测评已成功提交。<br>老师会认真查看你的情况。</p>
+                    <button class="btn btn-primary" id="btnDoneBack" style="margin-top:20px;">返回首页</button>
+                </div>`;
+            document.getElementById('btnDoneBack').onclick = renderEntry;
+        }
+
+        function renderTeacherLogin() {
+            document.getElementById('mainContainer').innerHTML = `
+                <div class="header teacher-header"><h1>🔐 教师登录</h1><div class="subtitle">请验证身份</div></div>
+                <div class="body-content">
+                    <div class="form-group"><label>账号</label><input type="text" id="inputAcc" placeholder="" autocomplete="off"></div>
+                    <div class="form-group"><label>密码</label><input type="password" id="inputPwd" placeholder="" autocomplete="off"></div>
+                    <button class="btn btn-teacher" id="btnLogin">登 录</button>
+                    <div style="text-align:center;margin-top:10px;"><button class="btn btn-back btn-sm" id="btnBack2">← 返回首页</button></div>
+                </div>`;
+            document.getElementById('btnLogin').onclick = () => {
+                const acc = document.getElementById('inputAcc').value.trim();
+                const pwd = document.getElementById('inputPwd').value;
+                if (acc === TEACHER_ACCOUNT && pwd === TEACHER_PASSWORD) {
+                    renderTeacherDashboard();
+                } else {
+                    document.getElementById('inputPwd').value = '';
+                    document.getElementById('inputAcc').value = '';
+                }
+            };
+            document.getElementById('btnBack2').onclick = renderEntry;
+            document.querySelectorAll('input').forEach(inp => inp.onkeydown = e => { if(e.key==='Enter') document.getElementById('btnLogin').click(); });
+        }
+
+        async function renderTeacherDashboard() {
+            currentView = 'teacherDashboard';
+            document.getElementById('mainContainer').classList.add('wide');
+            document.getElementById('mainContainer').innerHTML = `<div class="header teacher-header"><h1>📊 教师管理端</h1><div class="subtitle">加载中...</div></div><div class="body-content">正在获取数据...</div>`;
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/records`);
+                const data = await res.json();
+                const records = data.records;
+                let tableRows = '';
+                records.forEach((r, i) => {
+                    const analysis = analyzeRecord(r.answers);
+                    tableRows += `<tr>
+                        <td>${i+1}</td><td>${r.student_name}</td><td>${r.grade}</td><td>${r.class_name}</td><td>${r.gender}</td>
+                        <td>${new Date(r.timestamp).toLocaleString()}</td>
+                        <td><span class="badge-status ${analysis.overallAvg<=2.5?'badge-good':analysis.overallAvg<=3.2?'badge-normal':'badge-attention'}">${analysis.overallAvg}分</span></td>
+                        <td>
+                            <button class="btn btn-outline btn-sm btn-detail" data-id="${r.id}">详情</button>
+                            <button class="btn btn-danger btn-sm btn-del" data-id="${r.id}">删除</button>
+                        </td></tr>`;
+                });
+                document.getElementById('mainContainer').innerHTML = `
+                    <div class="header teacher-header"><h1>📊 教师管理端</h1><div class="subtitle">共 ${records.length} 条记录</div></div>
+                    <div class="body-content">
+                        <div style="text-align:right;margin-bottom:10px;">
+                            <button class="btn btn-danger btn-sm" id="btnClearAll">⚠ 清空全部</button>
+                            <button class="btn btn-outline btn-sm" id="btnRefresh">🔄 刷新</button>
+                        </div>
+                        <div class="table-wrap"><table>
+                            <thead><tr><th>序号</th><th>姓名</th><th>年级</th><th>班级</th><th>性别</th><th>时间</th><th>综合评分</th><th>操作</th></tr></thead>
+                            <tbody>${tableRows || '<tr><td colspan="8">暂无数据</td></tr>'}</tbody>
+                        </table></div>
+                        <div id="analysisPanel" class="analysis-panel"></div>
+                        <div style="text-align:center;margin-top:10px;"><button class="btn btn-back btn-sm" id="btnLogout">退出登录</button></div>
+                    </div>`;
+                document.querySelectorAll('.btn-detail').forEach(btn => {
+                    btn.onclick = () => {
+                        const id = parseInt(btn.dataset.id);
+                        const rec = records.find(r => r.id === id);
+                        if (rec) showAnalysis(rec);
+                    };
+                });
+                document.querySelectorAll('.btn-del').forEach(btn => {
+                    btn.onclick = async () => {
+                        if (!confirm('确定删除该记录吗？')) return;
+                        await fetch(`${API_BASE_URL}/api/records/${btn.dataset.id}`, {method:'DELETE'});
+                        renderTeacherDashboard();
+                    };
+                });
+                document.getElementById('btnClearAll').onclick = async () => {
+                    if (!confirm('确定清空全部数据？')) return;
+                    await fetch(`${API_BASE_URL}/api/records`, {method:'DELETE'});
+                    renderTeacherDashboard();
+                };
+                document.getElementById('btnRefresh').onclick = renderTeacherDashboard;
+                document.getElementById('btnLogout').onclick = renderEntry;
+            } catch(e) {
+                document.getElementById('mainContainer').innerHTML += '<p style="color:red;">无法连接服务器，请确保后端已启动</p>';
+            }
+        }
+
+        function showAnalysis(record) {
+            const panel = document.getElementById('analysisPanel');
+            const analysis = analyzeRecord(record.answers);
+            let dimHTML = '';
+            for (let [dim, data] of Object.entries(analysis.results)) {
+                dimHTML += `<div class="dimension-row">
+                    <span><strong>${dim}</strong></span>
+                    <span>${data.avg}分</span>
+                    <span class="badge-status ${data.colorClass}">${data.level}</span>
+                </div>`;
+            }
+            panel.innerHTML = `
+                <h3>${record.student_name} | ${record.grade}${record.class_name}班 | ${record.gender}</h3>
+                <p>综合评分：<b>${analysis.overallAvg}</b> 分</p>
+                <p>${analysis.overallLevel}</p>
+                ${dimHTML}
+                <details><summary>查看原始答案</summary>
+                ${questions.map((q,i) => `<div>${q.id}. ${q.text} → <b>${['','从不','偶尔','经常','总是'][record.answers[i]]||'未答'}</b></div>`).join('')}
+                </details>`;
+            panel.classList.add('active');
+        }
+
+        // 启动
+        renderEntry();
+    </script>
+</body>
+</html>
